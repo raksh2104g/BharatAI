@@ -1,11 +1,23 @@
+from typing import List
+
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
 from backend.app.database import get_db
+from backend.app.dependencies import get_current_user
+
+from backend.app.models.user import User
+
 from backend.app.schemas.chat import ChatRequest, ChatResponse
+from backend.app.schemas.chat_history import ChatHistoryResponse
+
 from backend.app.ai.llm_service import generate_answer
 from backend.app.ai.rag_service import retrieve_context
-from backend.app.services.chat_service import save_chat
+
+from backend.app.services.chat_service import (
+    save_chat,
+    get_chat_history
+)
 
 router = APIRouter(
     prefix="/chat",
@@ -19,27 +31,29 @@ router = APIRouter(
 )
 def chat(
     request: ChatRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
+    """
+    Chat with BharatAI
+    """
 
-    # Temporary user
-    user_id = 1
-
-    # Retrieve Context
+    # Retrieve relevant context
     contexts = retrieve_context(request.question)
 
+    # Convert list to string
     context = "\n\n".join(contexts)
 
-    # Generate Answer
+    # Generate AI answer
     answer = generate_answer(
         question=request.question,
         context=context
     )
 
-    # Save Chat
+    # Save chat history for logged-in user
     save_chat(
         db=db,
-        user_id=user_id,
+        user_id=current_user.id,
         question=request.question,
         answer=answer
     )
@@ -49,24 +63,19 @@ def chat(
     )
 
 
-
-from typing import List
-from backend.app.schemas.chat_history import ChatHistoryResponse
-from backend.app.services.chat_service import get_chat_history
-
-
 @router.get(
     "/history",
     response_model=List[ChatHistoryResponse]
 )
 def history(
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
 ):
-
-    # Temporary user
-    user_id = 1
+    """
+    Get chat history of logged-in user
+    """
 
     return get_chat_history(
         db=db,
-        user_id=user_id
+        user_id=current_user.id
     )
