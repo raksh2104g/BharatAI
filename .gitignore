@@ -20,6 +20,10 @@ venv/
 # Uploads
 backend/app/uploads/
 
+# Local Vector Database (Qdrant)
+backend/qdrant_data/
+*.lock
+
 # Database
 *.db
 *.sqlite3
@@ -30,7 +34,3 @@ backend/app/uploads/
 # OS Files
 .DS_Store
 Thumbs.db
-
-# Qdrant Local Database
-backend/qdrant_data/
-*.lock
