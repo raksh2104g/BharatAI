@@ -4,6 +4,9 @@ from backend.app.api.router import router
 from backend.app.database import engine, Base
 from backend.app.models.user import User
 from backend.app.models.document import Document
+from backend.app.models.chat import Chat
+
+
 
 
 Base.metadata.create_all(bind=engine)

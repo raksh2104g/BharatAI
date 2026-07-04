@@ -30,3 +30,7 @@ backend/app/uploads/
 # OS Files
 .DS_Store
 Thumbs.db
+
+# Qdrant Local Database
+backend/qdrant_data/
+*.lock
