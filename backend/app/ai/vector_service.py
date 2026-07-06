@@ -13,9 +13,13 @@ from qdrant_client.models import (
     Distance,
     VectorParams,
     PointStruct,
+    Filter,
+    FieldCondition,
+    MatchValue
 )
 
 client = QdrantClient(path="backend/qdrant_data")
+
 COLLECTION_NAME = "documents"
 
 collections = [
@@ -33,20 +37,30 @@ if COLLECTION_NAME not in collections:
     )
 
 
-def store_embeddings(chunks, embeddings):
+def store_embeddings(
+    chunks,
+    embeddings,
+    user_id: int,
+    document_id: int,
+    filename: str
+):
     """
-    Store embeddings into Qdrant.
+    Store embeddings with metadata.
     """
 
     points = []
 
     for chunk, embedding in zip(chunks, embeddings):
+
         points.append(
             PointStruct(
                 id=str(uuid4()),
                 vector=embedding,
                 payload={
-                    "text": chunk
+                    "text": chunk,
+                    "user_id": user_id,
+                    "document_id": document_id,
+                    "filename": filename
                 }
             )
         )
@@ -57,18 +71,31 @@ def store_embeddings(chunks, embeddings):
     )
 
 
-from qdrant_client.models import Filter
-
-
 def search_embeddings(
     embedding,
+    user_id: int,
     limit: int = 3
 ):
+    """
+    Search only current user's documents.
+    """
+
     response = client.query_points(
         collection_name=COLLECTION_NAME,
         query=embedding,
+        query_filter=Filter(
+            must=[
+                FieldCondition(
+                    key="user_id",
+                    match=MatchValue(value=user_id)
+                )
+            ]
+        ),
         limit=limit,
         with_payload=True
     )
 
     return response.points
+
+
+

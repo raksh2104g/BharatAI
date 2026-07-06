@@ -42,14 +42,10 @@ def save_document(
         )
 
     # Extract Text
-    extracted_text = extract_text_from_pdf(
-        file_path
-    )
+    extracted_text = extract_text_from_pdf(file_path)
 
     # Split into Chunks
-    chunks = chunk_text(
-        extracted_text
-    )
+    chunks = chunk_text(extracted_text)
 
     # Generate Embeddings
     embeddings = [
@@ -57,13 +53,7 @@ def save_document(
         for chunk in chunks
     ]
 
-    # Store in Qdrant
-    store_embeddings(
-        chunks,
-        embeddings
-    )
-
-    # Save Metadata in PostgreSQL
+    # Save Metadata in PostgreSQL FIRST
     document = Document(
         filename=file.filename,
         filepath=file_path,
@@ -76,5 +66,14 @@ def save_document(
     db.add(document)
     db.commit()
     db.refresh(document)
+
+    # Store in Qdrant WITH metadata
+    store_embeddings(
+        chunks=chunks,
+        embeddings=embeddings,
+        user_id=user_id,
+        document_id=document.id,
+        filename=file.filename
+    )
 
     return document

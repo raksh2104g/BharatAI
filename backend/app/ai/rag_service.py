@@ -12,17 +12,20 @@ from backend.app.ai.vector_service import search_embeddings
 
 def retrieve_context(
     question: str,
+    user_id: int,
     limit: int = 3
 ):
     """
-    Retrieve relevant chunks from Qdrant.
+    Retrieve relevant chunks
+    only from current user's documents.
     """
 
     question_embedding = generate_embedding(question)
 
     results = search_embeddings(
-        question_embedding,
-        limit
+        embedding=question_embedding,
+        user_id=user_id,
+        limit=limit
     )
 
     contexts = []

@@ -1,3 +1,11 @@
+"""
+========================================
+Project : BharatAI
+Module  : Chat API
+Purpose : AI Chat + Chat History
+========================================
+"""
+
 from typing import List
 
 from fastapi import APIRouter, Depends
@@ -38,19 +46,22 @@ def chat(
     Chat with BharatAI
     """
 
-    # Retrieve relevant context
-    contexts = retrieve_context(request.question)
+    # Retrieve relevant context from current user's documents
+    contexts = retrieve_context(
+        question=request.question,
+        user_id=current_user.id
+    )
 
-    # Convert list to string
+    # Convert list into single string
     context = "\n\n".join(contexts)
 
-    # Generate AI answer
+    # Generate AI Answer
     answer = generate_answer(
         question=request.question,
         context=context
     )
 
-    # Save chat history for logged-in user
+    # Save chat history
     save_chat(
         db=db,
         user_id=current_user.id,
@@ -72,7 +83,7 @@ def history(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Get chat history of logged-in user
+    Get logged-in user's chat history
     """
 
     return get_chat_history(
