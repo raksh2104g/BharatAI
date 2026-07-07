@@ -16,8 +16,14 @@ from backend.app.dependencies import get_current_user
 
 from backend.app.models.user import User
 
-from backend.app.schemas.chat import ChatRequest, ChatResponse
-from backend.app.schemas.chat_history import ChatHistoryResponse
+from backend.app.schemas.chat import (
+    ChatRequest,
+    ChatResponse
+)
+
+from backend.app.schemas.chat_history import (
+    ChatHistoryResponse
+)
 
 from backend.app.ai.llm_service import generate_answer
 from backend.app.ai.rag_service import retrieve_context
@@ -46,22 +52,53 @@ def chat(
     Chat with BharatAI
     """
 
-    # Retrieve relevant context from current user's documents
+    # ======================================
+    # Retrieve Relevant Context
+    # ======================================
+
     contexts = retrieve_context(
         question=request.question,
         user_id=current_user.id
     )
 
-    # Convert list into single string
-    context = "\n\n".join(contexts)
+    # ======================================
+    # Build Context for LLM
+    # ======================================
 
+    context = "\n\n".join(
+        item["text"]
+        for item in contexts
+    )
+
+    # ======================================
     # Generate AI Answer
+    # ======================================
+
     answer = generate_answer(
         question=request.question,
         context=context
     )
 
-    # Save chat history
+    # ======================================
+    # Collect Source Documents
+    # ======================================
+
+    sources: List[str] = []
+
+    for item in contexts:
+
+        filename = item.get("filename")
+
+        if (
+            filename
+            and filename not in sources
+        ):
+            sources.append(filename)
+
+    # ======================================
+    # Save Chat History
+    # ======================================
+
     save_chat(
         db=db,
         user_id=current_user.id,
@@ -69,8 +106,13 @@ def chat(
         answer=answer
     )
 
+    # ======================================
+    # Return Response
+    # ======================================
+
     return ChatResponse(
-        answer=answer
+        answer=answer,
+        sources=sources
     )
 
 
@@ -83,7 +125,8 @@ def history(
     current_user: User = Depends(get_current_user)
 ):
     """
-    Get logged-in user's chat history
+    Get chat history
+    of current logged-in user.
     """
 
     return get_chat_history(

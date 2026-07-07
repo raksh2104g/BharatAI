@@ -13,15 +13,20 @@ from fastapi import UploadFile
 from sqlalchemy.orm import Session
 
 from backend.app.models.document import Document
+
 from backend.app.services.pdf_service import extract_text_from_pdf
 from backend.app.services.chunk_service import chunk_text
+
 from backend.app.ai.embedding_service import generate_embedding
 from backend.app.ai.vector_service import store_embeddings
 
 
 UPLOAD_FOLDER = "backend/app/uploads"
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+os.makedirs(
+    UPLOAD_FOLDER,
+    exist_ok=True
+)
 
 
 def save_document(
@@ -29,7 +34,16 @@ def save_document(
     file: UploadFile,
     user_id: int
 ):
-    # Save File
+    """
+    Upload PDF, extract text,
+    generate embeddings and
+    store into PostgreSQL + Qdrant.
+    """
+
+    # ======================================
+    # Save Uploaded File
+    # ======================================
+
     file_path = os.path.join(
         UPLOAD_FOLDER,
         file.filename
@@ -41,19 +55,35 @@ def save_document(
             buffer
         )
 
+    # ======================================
     # Extract Text
-    extracted_text = extract_text_from_pdf(file_path)
+    # ======================================
 
+    extracted_text = extract_text_from_pdf(
+        file_path
+    )
+
+    # ======================================
     # Split into Chunks
-    chunks = chunk_text(extracted_text)
+    # ======================================
 
+    chunks = chunk_text(
+        extracted_text
+    )
+
+    # ======================================
     # Generate Embeddings
+    # ======================================
+
     embeddings = [
         generate_embedding(chunk)
         for chunk in chunks
     ]
 
-    # Save Metadata in PostgreSQL FIRST
+    # ======================================
+    # Save Metadata into PostgreSQL
+    # ======================================
+
     document = Document(
         filename=file.filename,
         filepath=file_path,
@@ -67,13 +97,16 @@ def save_document(
     db.commit()
     db.refresh(document)
 
-    # Store in Qdrant WITH metadata
+    # ======================================
+    # Store Embeddings into Qdrant
+    # ======================================
+
     store_embeddings(
         chunks=chunks,
         embeddings=embeddings,
         user_id=user_id,
         document_id=document.id,
-        filename=file.filename
+        filename=document.filename
     )
 
     return document

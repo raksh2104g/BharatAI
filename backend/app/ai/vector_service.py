@@ -7,6 +7,7 @@ Purpose : Store & Search Embeddings
 """
 
 from uuid import uuid4
+from typing import List
 
 from qdrant_client import QdrantClient
 from qdrant_client.models import (
@@ -18,34 +19,61 @@ from qdrant_client.models import (
     MatchValue
 )
 
-client = QdrantClient(path="backend/qdrant_data")
+# ======================================================
+# Docker Qdrant Connection
+# ======================================================
+
+client = QdrantClient(
+    url="http://localhost:6333"
+)
 
 COLLECTION_NAME = "documents"
 
-collections = [
-    c.name
-    for c in client.get_collections().collections
-]
+# ======================================================
+# Create Collection (Only Once)
+# ======================================================
 
-if COLLECTION_NAME not in collections:
-    client.create_collection(
-        collection_name=COLLECTION_NAME,
-        vectors_config=VectorParams(
-            size=384,
-            distance=Distance.COSINE
+try:
+
+    collections = [
+        collection.name
+        for collection in client.get_collections().collections
+    ]
+
+    if COLLECTION_NAME not in collections:
+
+        client.create_collection(
+            collection_name=COLLECTION_NAME,
+            vectors_config=VectorParams(
+                size=384,
+                distance=Distance.COSINE
+            )
         )
-    )
 
+        print(f"✅ Collection '{COLLECTION_NAME}' created.")
+
+    else:
+
+        print(f"✅ Collection '{COLLECTION_NAME}' already exists.")
+
+except Exception as e:
+
+    print(f"❌ Qdrant Connection Error: {e}")
+
+
+# ======================================================
+# Store Embeddings
+# ======================================================
 
 def store_embeddings(
-    chunks,
-    embeddings,
+    chunks: List[str],
+    embeddings: List[List[float]],
     user_id: int,
     document_id: int,
     filename: str
 ):
     """
-    Store embeddings with metadata.
+    Store document embeddings in Qdrant.
     """
 
     points = []
@@ -70,14 +98,21 @@ def store_embeddings(
         points=points
     )
 
+    print(f"✅ Stored {len(points)} embeddings.")
+
+
+# ======================================================
+# Search Embeddings
+# ======================================================
 
 def search_embeddings(
-    embedding,
+    embedding: List[float],
     user_id: int,
     limit: int = 3
 ):
     """
-    Search only current user's documents.
+    Search embeddings only from
+    current logged-in user's documents.
     """
 
     response = client.query_points(
@@ -96,6 +131,3 @@ def search_embeddings(
     )
 
     return response.points
-
-
-
